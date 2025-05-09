@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<script id="vertex-shader" type="x-shader/x-vertex">
+attribute vec4 vPosition;
+attribute vec3 vNormal;
+attribute vec4 vColor;
+attribute float vShininess;
+
+uniform mat4 modelView;
+uniform mat4 projection;
+
+varying float fShininess;
+varying vec3 fNormal;
+varying vec3 fPosition;
+varying vec4 fColorBase;
+
+void main() {
+    fPosition = (modelView * vPosition).xyz;
+    fNormal = normalize((modelView * vec4(vNormal, 0.0)).xyz);
+    fShininess = vShininess;
+    fColorBase = vColor;
+    gl_Position = projection * modelView * vPosition;
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+
+varying vec3 fNormal;
+varying vec3 fPosition;
+varying vec4 fColorBase;
+
+uniform vec4 ambientProduct;
+uniform vec4 diffuseProduct;
+uniform vec4 specularProduct;
+uniform vec4 lightPosition;
+varying float fShininess;
+uniform vec3 eyePosition;
+
+void main() {
+    // Skip Phong lighting if alpha is 0 (used by grass)
+    if (fColorBase.a == 0.0) {
+        gl_FragColor = vec4(fColorBase.rgb, 1.0);
+        return;
+    }
+
+    vec3 N = normalize(fNormal);
+    vec3 L = normalize(lightPosition.xyz - fPosition);
+    vec3 E = normalize(-fPosition); 
+    vec3 H = normalize(L + E);
+
+    float Kd = max(dot(L, N), 0.0);
+    float Ks = pow(max(dot(N, H), 0.0), fShininess);
+
+    vec3 ambient = ambientProduct.xyz * fColorBase.rgb;
+    vec3 diffuse = Kd * diffuseProduct.xyz * fColorBase.rgb;
+    vec3 specular = Ks * specularProduct.xyz;
+
+    // Dampen specular on skybox
+    if (fShininess < 20.0) {
+        specular *= 0.01;
+        diffuse *= 0.06;
+}
+
+    vec3 finalColor = diffuse + specular + ambient;
+    gl_FragColor = vec4(finalColor, 1.0);
+}
+</script>
+
+<script type="text/javascript" src="webgl-utils.js"></script>
+<script type="text/javascript" src="initShaders.js"></script>
+<script type="text/javascript" src="MV.js"></script>
+<script type="text/javascript" src="vectorMath.js"></script>
+<script type="text/javascript" src="project4.js"></script>
+<script type="text/javascript" src="phong-utils.js"></script>
+<script type="text/javascript" src="skybox.js"></script>
+<script type="text/javascript" src="meshLibrary.js"></script>
+
+<body>
+<canvas id="gl-canvas" width="1000" height="800">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+</body>
+</html>
