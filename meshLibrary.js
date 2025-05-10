@@ -85,6 +85,15 @@ function generateTree(_mesh) {
 
         for (let j = 0; j < treeMesh.length - 1; j++) { //For each point in the contour
             let point1 = treeMesh[j]; let point2 = treeMesh[j + 1]; //Holds 2 points of the contour at a time
+
+            //If it comes to a point, calculate a simple triangle. Create a boolean check here
+            let pointCheck = false;
+            let pointsToPush = 6;   //Default is 6 points per quad, however, if it's a triangle only push 3.
+            if (point1[0] == 0) {
+                pointCheck = true;
+                pointsToPush = 3;
+            }
+
             //Generate a square
             //Rotate each point according to the rotationAmt * i. Scale each position by meshSize, then add origin position.
             let tL = add(_mesh.origin, vec3(point1[0] * cos1 * meshSize, point1[1] * meshSize, point1[0] * sin1 * meshSize));
@@ -95,10 +104,9 @@ function generateTree(_mesh) {
             //Push triangle 1
             pointsArray.push(tL, bL, bR);
             let normal1 = negate(computeNormal(tL, bL, bR));
-            normalsArray.push(normal1, normal1, normal1, normal1, normal1, normal1);
 
-            //Push triangle 2
-            pointsArray.push(tL, tR, bR);
+            //Push triangle 2 if doesn't come to a point
+            if (pointCheck == false) {pointsArray.push(tL, tR, bR);}
 
             //If bottom of square is touching the ground, color is brown
             let _color = color;
@@ -107,9 +115,10 @@ function generateTree(_mesh) {
             }
 
             //Push colors and shininess to arrays
-            for (let k = 0; k < 6; k++) {
+            for (let k = 0; k < pointsToPush; k++) {
                 colorsArray.push(_color);
                 shineArray.push(treeShiny);
+                normalsArray.push(normal1);
             }
         }
 
@@ -150,6 +159,14 @@ function generateRock(_mesh) {
             let point1 = rockMesh[j];
             let point2 = rockMesh[j + 1];
 
+            //If it comes to a point, calculate a simple triangle. Create a boolean check here
+            let pointCheck = false;
+            let pointsToPush = 6;   //Default is 6 points per quad, however, if it's a triangle only push 3.
+            if (point1[0] == 0) {
+                pointCheck = true;
+                pointsToPush = 3;
+            }
+
             let tL = add(_mesh.origin, vec3(point1[0] * cos1 * meshSize, point1[1] * meshSize, point1[0] * sin1 * meshSize));
             let bL = add(_mesh.origin, vec3(point2[0] * cos1 * meshSize, point2[1] * meshSize, point2[0] * sin1 * meshSize));
             let tR = add(_mesh.origin, vec3(point1[0] * cos2 * meshSize, point1[1] * meshSize, point1[0] * sin2 * meshSize));
@@ -158,17 +175,17 @@ function generateRock(_mesh) {
             // Push triangle 1
             pointsArray.push(tL, bL, bR);
             let normal1 = negate(computeNormal(tL, bL, bR));
-            normalsArray.push(normal1, normal1, normal1, normal1, normal1, normal1);
 
-            // Push triangle 2
-            pointsArray.push(tL, tR, bR);
+            //Push triangle 2 if doesn't come to a point
+            if (pointCheck == false) {pointsArray.push(tL, tR, bR);}
 
             // Rock color (gray)
             let color = vec4(0.5 + Math.random() * 0.1, 0.5 + Math.random() * 0.1, 0.5 + Math.random() * 0.1, 1);
 
-            for (let k = 0; k < 6; k++) {
+            for (let k = 0; k < pointsToPush; k++) {
                 colorsArray.push(color);
                 shineArray.push(rockShiny);
+                normalsArray.push(normal1);
             }
         }
     }
@@ -249,18 +266,25 @@ function generateHouse(_mesh) {
             let point1 = houseMesh[j];
             let point2 = houseMesh[j + 1];
 
+            //If it comes to a point, calculate a simple triangle. Create a boolean check here
+            let pointCheck = false;
+            let pointsToPush = 6;   //Default is 6 points per quad, however, if it's a triangle only push 3.
+            if (point1[0] == 0) {
+                pointCheck = true;
+                pointsToPush = 3;
+            }
+
             let tL = add(_mesh.origin, vec3(point1[0] * cos1 * meshSize, point1[1] * meshSize, point1[0] * sin1 * meshSize));
             let bL = add(_mesh.origin, vec3(point2[0] * cos1 * meshSize, point2[1] * meshSize, point2[0] * sin1 * meshSize));
             let tR = add(_mesh.origin, vec3(point1[0] * cos2 * meshSize, point1[1] * meshSize, point1[0] * sin2 * meshSize));
             let bR = add(_mesh.origin, vec3(point2[0] * cos2 * meshSize, point2[1] * meshSize, point2[0] * sin2 * meshSize));
 
-            // Push triangle 1
+            //Push triangle 1
             pointsArray.push(tL, bL, bR);
             let normal1 = negate(computeNormal(tL, bL, bR));
-            normalsArray.push(normal1, normal1, normal1, normal1, normal1, normal1);
 
-            // Push triangle 2
-            pointsArray.push(tL, tR, bR);
+            //Push triangle 2 if doesn't come to a point
+            if (pointCheck == false) {pointsArray.push(tL, tR, bR);}
 
             //If the square is part of a foundation or roof, the color will be gray
             let _color = color;
@@ -268,8 +292,9 @@ function generateHouse(_mesh) {
                 _color = vec4(0.5, 0.5, 0.5, 1);
             }
 
-            for (let k = 0; k < 6; k++) {
+            for (let k = 0; k < pointsToPush; k++) {
                 colorsArray.push(_color);
+                normalsArray.push(normal1);
                 shineArray.push(houseShiny);
             }
         }

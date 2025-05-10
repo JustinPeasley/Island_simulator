@@ -4,10 +4,10 @@
  */
 "use strict";
 
-function generateSkybox(size = 4, shininess = 10) {
+function generateSkybox(size = 3.95, shininess = 10) {
     const skyColors = {
-        bottom: vec4(0.1, 0.5, 1.0, 1.0),  // vivid blue
-        top:    vec4(0.4, 0.8, 1.0, 1.0)   // rich light blue
+        bottom: vec4(0.3, 0.5, 0.7, 1.0),  // medium blue
+        top:    vec4(0.5, 0.8, 1.0, 1.0)   // rich light blue
     };
     
     
@@ -29,8 +29,8 @@ function generateSkybox(size = 4, shininess = 10) {
     const faces = [
         [0, 1, 2, 0, 2, 3],      // front
         [4, 5, 6, 4, 6, 7],      // back
-        [8, 9,10, 8,10,11],      // top
-        [12,13,14,12,14,15],     // bottom
+        [8, 9,10, 8,10,11],      // top       
+        //[12,13,14,12,14,15],     // bottom //With an automatic camera, this will never been seen and thus can be omitted from the render
         [16,17,18,16,18,19],     // right
         [20,21,22,20,22,23]      // left
     ];

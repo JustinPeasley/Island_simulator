@@ -20,26 +20,24 @@ var frame = 0;
 //Camera variables
 var near = 0.1;
 var far = 100.0;  //replace back to 30
-var fovy = 90.0;  // Field-of-view in Y direction angle (in degrees)
+var fovy = 70.0;  // Field-of-view in Y direction angle (in degrees)
 var aspect;       // Viewport aspect ratio
 var mvMatrix, pMatrix;
 var modelView, projection;
 var eye;
 const lightSource = vec3(0, 1.5, 0);
-var eye = vec3(4, 3, 4);
+var eye = vec3(1, 0, 1);
 var at = vec3(0, 1, 0);
 const up = vec3(0.0, 1.0, 0.0);
-var cameraY = 0.1;        //Tied to highest point in land generation
 var cameraCounter = 0;
 const cameraSpeed = 10;      //Higher = slower rotation
-const cameraRadius = 3.9;   //How far the camera is from the center
 
 //Water variables
 //Water moves in direction of X
 const waterGridSize = 75;   //How many points will cover one side of the grid. More points = higher definition
 var seaLevel = -1.6;       //How low the sea is placed in the box.
 var sinCounter = 0;         //This goes up every frame of the animation, resets at 2Pi
-const seaVertexCount = Math.pow(waterGridSize - 1, 2) * 6;      //Total vertex count = (grid size)^2 * 6 (points per square)
+var seaVertexCount = 0;   //This is calculated within generateSea
 const seaSize = 4;          //How wide the water is
 const seaBumpOffset = 0.005; //How much the points vary with noise
 const waveScale = 0.02;     //How high the waves go
@@ -55,6 +53,7 @@ const skyboxVertexCount = 36; // 6 faces * 2 triangles * 3 vertices
  */
 function generateSea() {
     var waterMeshX = [];
+    seaVertexCount = 0;
     for (let i = 0; i < waterGridSize; i++) {   //Fill each index of waterMeshX with another array 
         let waterMeshZ = [];
         for (let j = 0; j < waterGridSize; j++) {
@@ -83,6 +82,12 @@ function generateSea() {
             let br = waterMeshX[i+1][j+1];              //Bottom right
             let tr = waterMeshX[i][j+1];                //Top right
             
+            //If a quad is hidden by land, don't push anything, continue the loop.
+            //Land uses a different grid than water, but we can do a rough estimate to get the index for landgrid.
+            let landIndexX = Math.floor((landGridSize / waterGridSize) * i);
+            let landIndexZ = Math.floor((landGridSize / waterGridSize) * j);
+            if (tl[1] < landMeshX[landIndexX][landIndexZ][1] - waveScale - 0.03) {continue;}
+
             //traingle 1
             pointsArray.push(tl);                       
             pointsArray.push(bl);                       
@@ -92,6 +97,8 @@ function generateSea() {
             pointsArray.push(tl);         
             pointsArray.push(br);     
             pointsArray.push(tr);
+
+            seaVertexCount += 6;    //6 points are added per tile
 
             //calculate the normals of traingles
             let normal1 = negate(computeNormal(tl, bl, br));
@@ -123,8 +130,8 @@ function generateSea() {
 }
 
 //Land variables
-const landGridSize = 125;   //How many points will cover one side of the grid. More points = higher definition
-const landVertexCount = Math.pow(landGridSize - 1, 2) * 6;      //Total vertex count = (grid size)^2 * 6 (points per square)
+const landGridSize = 100;   //How many points will cover one side of the grid. More points = higher definition
+var landVertexCount = 0;    //Calculated inside displayLand()
 const landSize = 4;          //How wide the land is
 const maxMountainHeight = 0.5;  //How high the peaks can go
 const maxPeakSpacing = 0.5;
@@ -165,12 +172,9 @@ function generateLand() {
             //Push the vertex
             landMeshZ.push(vec3(xPos, yPos, zPos));
 
-            //If a new highest point has been reached, update cameraY. Always highest y value + 1
-            if (yPos > cameraY - 1) {cameraY = yPos + 1;}
         }
         landMeshX.push(landMeshZ);
     }
-    console.log(cameraY);
     populateMeshes();
 }
 
@@ -180,6 +184,8 @@ function generateLand() {
  * @author Justin Peasley - Normal map calculation
  */
 function displayLand() {
+    landVertexCount = 0;
+    let triangleSaved = 0;
     //Set up for triangles, connects 4 points at a time.
     for (let i = 0; i < landMeshX.length - 1; i++) {
         for (let j = 0; j < landMeshX[0].length - 1; j++) {
@@ -187,6 +193,12 @@ function displayLand() {
             let bl = landMeshX[i+1][j];                //Bottom left
             let br = landMeshX[i+1][j+1];              //Bottom right
             let tr = landMeshX[i][j+1];                //Top right
+
+            //Check if the tile is underwater, if so, cull it by continuing past the array pushing.
+            if (tl[1] < seaLevel - waveScale - 0.03) {
+                triangleSaved += 2;
+                continue;
+            }
 
             //Traingle 1
             pointsArray.push(tl);                       
@@ -219,8 +231,10 @@ function displayLand() {
                 colorsArray.push(color);
                 shineArray.push(landShiney);
             }
+            landVertexCount += 6;
         }
     }
+    console.log("Triangles saved from culling underwater land: " + triangleSaved);
 }
 
 //Mesh constants
@@ -433,8 +447,21 @@ window.onload = function init() {
             var cameraAngle = ((Math.PI * 2) / (cameraSpeed * frameCount)) * cameraCounter;
             
             //Manage camera, flies around the map in a circle
-            eye = vec3(cameraRadius * Math.sin(cameraAngle), cameraY, cameraRadius * Math.cos(cameraAngle));
-            at = vec3(0, cameraY - 1, 0);
+            const cameraRadius = 3.9;   //How far the camera is from the center
+            let cameraX = cameraRadius * Math.sin(cameraAngle);
+            let cameraZ = cameraRadius * Math.cos(cameraAngle);
+
+            //Check the position of the ground, and set the cameraY a set distance from it.
+            //The range of cameraX = cameraRadius * Math.sin(cameraAngle) is -cameraRadius to cameraRadius.
+            //Convert the position from this range to the range of 0 to gridSize
+            //4 is the map size
+            let gridIndexX = Math.floor(((cameraX + 4) / (4 * 2)) * landGridSize);
+            let gridIndexZ = Math.floor(((cameraZ + 4) / (4 * 2)) * landGridSize);
+            let groundY = landMeshX[gridIndexX][gridIndexZ][1]
+            var cameraY = Math.max(groundY,seaLevel) + 0.7;
+
+            eye = vec3(cameraX, cameraY, cameraZ);
+            at = vec3(0, seaLevel + 1, 0);
 
             // Clear all arrays to prevent slow down
             // Preserve static data; clear only the dynamic part (sea + skybox)
