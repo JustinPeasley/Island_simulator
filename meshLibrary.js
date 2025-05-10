@@ -3,7 +3,7 @@
  * to build a 3D object like a tree, rock, or grass patch.
  * 
  * @constructor
- * @param {string} type     - The type of mesh ("tree", "rock", "grass").
+ * @param {string} type     - The type of mesh ("tree", "rock", "grass", "house").
  * @param {number} rotation - The rotation angle (in radians) to apply.
  * @param {number} scale    - The scale modifier for the mesh size.
  * @param {vec3} origin     - The origin point (vec3) in world space.
@@ -45,6 +45,9 @@ function buildMesh(mesh) {
         case "grass":
             generateGrass(mesh);
             break;
+        case "house":
+            generateHouse(mesh);
+            break;
     }
 }
 
@@ -68,6 +71,8 @@ function generateTree(_mesh) {
     let rotationOffset = _mesh.rotation;
     const rotationAmt = (2 * Math.PI) / rotationSegments;
     const treeShiny = 100000;
+    //Color is a randomized green.
+    let color = vec4(Math.random() * 0.6, 0.5 + Math.random() * 0.5, Math.random() * 0.2, 1);
 
     for (let i = 0; i < rotationSegments; i++) { //Do this for each 'side' of the mesh
         let angle1 = i * rotationAmt;
@@ -95,15 +100,15 @@ function generateTree(_mesh) {
             //Push triangle 2
             pointsArray.push(tL, tR, bR);
 
-            //Test if this is a side of the trunk or foliage by checking if the second point's contour's y == 0.
-            let color = vec4(0.4, 0.6, 0.3, 1);
+            //If bottom of square is touching the ground, color is brown
+            let _color = color;
             if (point2[1] == 0) {
-                color = vec4(0.5, 0.4, 0.2, 1);
+                _color = vec4(0.5, 0.4, 0.2, 1);
             }
 
             //Push colors and shininess to arrays
             for (let k = 0; k < 6; k++) {
-                colorsArray.push(color);
+                colorsArray.push(_color);
                 shineArray.push(treeShiny);
             }
         }
@@ -126,7 +131,7 @@ function generateRock(_mesh) {
         [0.15, 0.0, 0.0]    // Bottom
     ];
 
-    const meshSize = 0.3 + _mesh.scale;       // Make the rock shorter and bulkier
+    const meshSize = 0.1 + _mesh.scale;       // Make the rock shorter and bulkier
     const rotationSegments = 6;               // More sides for a rounder appearance
     let rotationOffset = _mesh.rotation;
     const rotationAmt = (2 * Math.PI) / rotationSegments;
@@ -207,6 +212,66 @@ function generateGrass(_mesh) {
             normalsArray.push(vec3(0, 1, 0));
             colorsArray.push(color);
             shineArray.push(grassShiny);
+        }
+    }
+}
+
+function generateHouse(_mesh) {
+    //First build without the roof
+    const houseMesh = [
+        [0, 1.2, 0],          //Top of house
+        [1, 0.85, 0],       //Where the roof meets the top of wall
+        [0.85, 0.85, 0],    
+        [0.85, 0.2, 0],     //Bottom of house
+        [1, 0.2, 0],        //Top of foundation
+        [1, -0.5, 0]        //Bottom of foundation, sinks into ground.
+    ]
+
+    const meshSize = 0.2
+    const rotationSegments = 4;               //4 sides of house
+    let rotationOffset = _mesh.rotation;
+    const rotationAmt = (2 * Math.PI) / rotationSegments;
+    const houseShiny = 10;                     // Very low shininess
+
+    //House color is randomized and muted
+    let color = vec4(0.4 + Math.random() * 0.4, 0.4 + Math.random() * 0.4, 0.2 + Math.random() * 0.2, 1);
+
+    for (let i = 0; i < rotationSegments; i++) {
+        let angle1 = i * rotationAmt;
+        let angle2 = (i + 1) * rotationAmt;
+
+        let cos1 = Math.cos(angle1 + rotationOffset);
+        let sin1 = Math.sin(angle1 + rotationOffset);
+        let cos2 = Math.cos(angle2 + rotationOffset);
+        let sin2 = Math.sin(angle2 + rotationOffset);
+
+        for (let j = 0; j < houseMesh.length - 1; j++) {
+            let point1 = houseMesh[j];
+            let point2 = houseMesh[j + 1];
+
+            let tL = add(_mesh.origin, vec3(point1[0] * cos1 * meshSize, point1[1] * meshSize, point1[0] * sin1 * meshSize));
+            let bL = add(_mesh.origin, vec3(point2[0] * cos1 * meshSize, point2[1] * meshSize, point2[0] * sin1 * meshSize));
+            let tR = add(_mesh.origin, vec3(point1[0] * cos2 * meshSize, point1[1] * meshSize, point1[0] * sin2 * meshSize));
+            let bR = add(_mesh.origin, vec3(point2[0] * cos2 * meshSize, point2[1] * meshSize, point2[0] * sin2 * meshSize));
+
+            // Push triangle 1
+            pointsArray.push(tL, bL, bR);
+            let normal1 = negate(computeNormal(tL, bL, bR));
+            normalsArray.push(normal1, normal1, normal1, normal1, normal1, normal1);
+
+            // Push triangle 2
+            pointsArray.push(tL, tR, bR);
+
+            //If the square is part of a foundation or roof, the color will be gray
+            let _color = color;
+            if (point2[0] == 1 || point1[0] == 1) {
+                _color = vec4(0.5, 0.5, 0.5, 1);
+            }
+
+            for (let k = 0; k < 6; k++) {
+                colorsArray.push(_color);
+                shineArray.push(houseShiny);
+            }
         }
     }
 }

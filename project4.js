@@ -11,6 +11,12 @@ var shineArray = [];
 //used for spliting static and dynamic vertex (Saves recomputing static variables drastically improves performance)
 var staticVertexCount; 
 
+
+//Animation variables
+const frameCount = 20; //60 total frames in the animation, 3 frames per second
+const animationInterval = (1000) / frameCount;   //Divide 10 seconds by frame count
+var frame = 0;
+
 //Camera variables
 var near = 0.1;
 var far = 100.0;  //replace back to 30
@@ -19,18 +25,14 @@ var aspect;       // Viewport aspect ratio
 var mvMatrix, pMatrix;
 var modelView, projection;
 var eye;
-
-//Animation variables
-const frameCount = 20; //60 total frames in the animation, 3 frames per second
-const animationInterval = (1000) / frameCount;   //Divide 10 seconds by frame count
-var frame = 0;
-
-//Camera
 const lightSource = vec3(0, 1.5, 0);
-var cameraSpeed = 0.2;
 var eye = vec3(4, 3, 4);
-var at = vec3(-2, -1, -2);
+var at = vec3(0, 1, 0);
 const up = vec3(0.0, 1.0, 0.0);
+var cameraY = 0.1;        //Tied to highest point in land generation
+var cameraCounter = 0;
+const cameraSpeed = 10;      //Higher = slower rotation
+const cameraRadius = 3.9;   //How far the camera is from the center
 
 //Water variables
 //Water moves in direction of X
@@ -52,7 +54,6 @@ const skyboxVertexCount = 36; // 6 faces * 2 triangles * 3 vertices
  * @author Justin Peasley - Normal map calculation
  */
 function generateSea() {
-
     var waterMeshX = [];
     for (let i = 0; i < waterGridSize; i++) {   //Fill each index of waterMeshX with another array 
         let waterMeshZ = [];
@@ -151,8 +152,8 @@ function generateLand() {
         let landMeshZ = [];
         for (let j = 0; j < landGridSize; j++) {
             //Calculate each vertex's position
-            let xPos = (2 * landSize * i / landGridSize) - landSize;                //Gives value between (-2 and 2) * size
-            let zPos = (2 * landSize * j / landGridSize) - landSize;                //Gives value between (-2 and 2) * size
+            let xPos = (2 * landSize * i / landGridSize) - landSize;                //Gives value between (-1 and 1) * size
+            let zPos = (2 * landSize * j / landGridSize) - landSize;                //Gives value between (-1 and 1) * size
             //Calculate y
             let yPos = (mountainScaleA * Math.sin(mountainSpacingA * xPos + phaseShiftA)) + (mountainScaleB * Math.cos(mountainSpacingB * zPos + phaseShiftB))
                 + (0.4 * Math.sin(xPos * 0.15 + zPos * 0.3)) - 1.5;
@@ -163,10 +164,13 @@ function generateLand() {
 
             //Push the vertex
             landMeshZ.push(vec3(xPos, yPos, zPos));
+
+            //If a new highest point has been reached, update cameraY. Always highest y value + 1
+            if (yPos > cameraY - 1) {cameraY = yPos + 1;}
         }
         landMeshX.push(landMeshZ);
     }
-
+    console.log(cameraY);
     populateMeshes();
 }
 
@@ -220,21 +224,55 @@ function displayLand() {
 }
 
 //Mesh constants
-const baseTreeDensity  = 0.02;
-const baseRockDensity  = 0.1;
-const baseGrassDensity = 0.5;
+const baseTreeDensity  = 0.015;
+const baseRockDensity  = 0.05;
+const baseGrassDensity = 0.25;
+const baseHouseDensity = 0.0003;
 var meshArray = [];
+var houseArray = [];
+const distBetweenHouses = 0.2;
 /**
  * Function that determines where different ground elements should be placed based on their elevation. Is called within generateLand, 
  * thus landMeshX shouldn't be cleared by this point. This could be done within generateLand, but I want to pull this to a seperate 
  * method just to keep the functionality distinct.
- * @author Justin Aul
+ * @author Justin Aul Created the framework and weighted values
+ * @author Justin Peasley Modified the system to include grass spawn
  */
 function populateMeshes() {
     meshArray = []; //Clear mesh array
+    houseArray = [];    //Used for testing position, wont spawn meshes in an area taken by a house.
     for (let i = 0; i < landMeshX.length - 1; i++) {
         for (let j = 0; j < landMeshX[0].length - 1; j++) {
+            //Test if this index is within range of a house
+            //Note: Generation prior to houses being spawned won't be stopped. To offset this, houses are placed slightly forward from landMeshX[i][j]
+            let posTaken = false;
+            for (let k = 0; k < houseArray.length; k++) {
+                let xTaken = landMeshX[i][j][0] - houseArray[k][0];
+                let zTaken = landMeshX[i][j][2] - houseArray[k][2];
+
+                //Check circular exlusion zone
+                let distSq = (xTaken * xTaken) + (zTaken * zTaken);
+                if (distSq < distBetweenHouses * distBetweenHouses) {
+                    posTaken = true;
+                    break;
+                }
+            }
+
+            //If this position is taken, continue to next iteration in loop
+            if (posTaken) {continue;}
+
+            //Begin generation
             let yPosition = landMeshX[i][j][1];
+
+            //Start with houses, they can be spawned anywhere above seaLevel.
+            if (yPosition > seaLevel + waveScale + 0.05) {
+                if (determineMeshSpawn(baseHouseDensity) == true) {
+                    meshArray.push(createMeshBase("house",add(vec3(0.1, 0, 0.1),landMeshX[i][j])));   //Houses are placed slightly forward
+                    houseArray.push(add(vec3(0.1, 0, 0.1),landMeshX[i][j]));
+                    continue;   //If house is created, skip to next iteration
+                }
+            }
+
             //Peaks have no trees, but have rocks
             if (yPosition > maxMountainHeight + (0.65 * seaLevel)) {
                 if (determineMeshSpawn(baseRockDensity) == true) {
@@ -242,13 +280,13 @@ function populateMeshes() {
                 }
             }
             //Grass areas have trees and lower rocks.
-            else if (yPosition > seaLevel + 0.3) {
+            else if (yPosition > seaLevel + 0.16) {
                 //Tree takes priority in generation
                 if (determineMeshSpawn(baseTreeDensity) == true) {
                     meshArray.push(createMeshBase("tree",landMeshX[i][j]));
                 }
-                //Rocks have 50% the change to spawn in this area
-                else if (determineMeshSpawn(baseRockDensity * 0.5) == true) {
+                //Rocks have 25% the change to spawn in this area
+                else if (determineMeshSpawn(baseRockDensity * 0.25) == true) {
                     meshArray.push(createMeshBase("rock",landMeshX[i][j]));
                 }
                 else if (determineMeshSpawn(baseGrassDensity) == true) {
@@ -264,7 +302,7 @@ function populateMeshes() {
                 
             }
             //Beaches have 25% trees and no rocks
-            else if (yPosition > seaLevel + waveScale + seaBumpOffset) {
+            else if (yPosition > seaLevel + waveScale) {
                 if (determineMeshSpawn(baseTreeDensity * 0.25) == true) {
                     meshArray.push(createMeshBase("tree",landMeshX[i][j]));
                 }
@@ -327,7 +365,7 @@ window.onload = function init() {
 
 
     /**
-        Keyboard controls for camera movement
+        Keyboard controls for camera movement. Depreciated.
         @author Justin Aul
     */
 	document.addEventListener('keydown', (event) => {
@@ -385,13 +423,19 @@ window.onload = function init() {
 
 
     /**
-        Timer for sea animation
+        Timer for sea animation and automated camera movements
         @author Justin Aul
     */
     function timer() {
         setTimeout(function () {
-            sinCounter = ((Math.PI * 2) / frameCount) * frame;
-    
+            //Manage incremental variables
+            sinCounter = ((Math.PI * 2) / frameCount) * frame;  //For wave animation
+            var cameraAngle = ((Math.PI * 2) / (cameraSpeed * frameCount)) * cameraCounter;
+            
+            //Manage camera, flies around the map in a circle
+            eye = vec3(cameraRadius * Math.sin(cameraAngle), cameraY, cameraRadius * Math.cos(cameraAngle));
+            at = vec3(0, cameraY - 1, 0);
+
             // Clear all arrays to prevent slow down
             // Preserve static data; clear only the dynamic part (sea + skybox)
             pointsArray.splice(staticVertexCount);
@@ -399,14 +443,21 @@ window.onload = function init() {
             normalsArray.splice(staticVertexCount);
             shineArray.splice(staticVertexCount);
 
+
             generateSkybox();  // still camera-relative
             generateSea();     // dynamic only
 
-    
             handleRendering();
     
+            cameraCounter++;
             frame++;
-            if (frame >= frameCount) frame = 0;
+            if (frame >= frameCount) {frame = 0;}
+            //Once the camera has rotated twice, regenerage the map
+            if (cameraCounter >= 2 * cameraSpeed * frameCount) {
+                generateLand();
+                generateStaticWorld();
+                cameraCounter = 0;
+            }
             timer();
         }, animationInterval);
     }
@@ -484,7 +535,7 @@ window.onload = function init() {
     console.log("Total points:", pointsArray.length);
 }
 
-var render = function(){
+var render = function() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     mvMatrix = lookAt(eye, at, up);
     pMatrix = perspective(fovy, aspect, near, far);
