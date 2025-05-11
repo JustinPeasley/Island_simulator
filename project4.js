@@ -42,7 +42,7 @@ var sinCounter = 0;         //This goes up every frame of the animation, resets 
 var seaVertexCount = 0;   //This is calculated within generateSea
 const seaBumpOffset = 0.005; //How much the points vary with noise
 const waveScale = 0.02;     //How high the waves go
-const waterShiny = 90;
+const waterShiny = 35;
 
 //Skybox Variable
 const skyboxVertexCount = 36; // 6 faces * 2 triangles * 3 vertices
