@@ -4,14 +4,11 @@
  */
 "use strict";
 
-function generateSkybox(size = 3.95, shininess = 10) {
+function generateSkybox(size = mapSize - 0.1, shininess = 10) {
     const skyColors = {
         bottom: vec4(0.3, 0.5, 0.7, 1.0),  // medium blue
         top:    vec4(0.5, 0.8, 1.0, 1.0)   // rich light blue
     };
-    
-    
-    
 
     const vertices = [
         [-1, -1,  1], [1, -1,  1], [1,  1,  1], [-1,  1,  1], // front
@@ -46,7 +43,7 @@ function generateSkybox(size = 3.95, shininess = 10) {
             const pos = vertices[idx];
 
             const x = pos[0] * size;
-            const y = pos[1] * size + 2;
+            const y = pos[1] * size * 2;
             const z = pos[2] * size;
 
             const vertex = vec3(x, y, z);

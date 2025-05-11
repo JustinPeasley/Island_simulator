@@ -63,7 +63,7 @@ function generateTree(_mesh) {
         [0, 1, 0],      //Top of tree
         [0.3, 0.25, 0],   //Edge of foliage
         [0.05, 0.25, 0],   //Where the foliage connects to 
-        [0.05, 0, 0]     //Base of the trunk
+        [0.05, -0.1, 0]     //Base of the trunk
     ]
 
     const meshSize = 0.4 + _mesh.scale;         //How tall the tree is
@@ -110,7 +110,7 @@ function generateTree(_mesh) {
 
             //If bottom of square is touching the ground, color is brown
             let _color = color;
-            if (point2[1] == 0) {
+            if (point2[1] == -0.1) {
                 _color = vec4(0.5, 0.4, 0.2, 1);
             }
 
@@ -137,7 +137,7 @@ function generateRock(_mesh) {
         [0.0, 0.3, 0.0],    // Top-ish
         [0.15, 0.2, 0.0],   // Mid-upper slope
         [0.3, 0.1, 0.0],    // Mid-lower slope
-        [0.15, 0.0, 0.0]    // Bottom
+        [0.15, -0.1, 0.0]    // Bottom
     ];
 
     const meshSize = 0.1 + _mesh.scale;       // Make the rock shorter and bulkier
@@ -233,6 +233,12 @@ function generateGrass(_mesh) {
     }
 }
 
+/**
+ * Generates geometry for a house using a radial extrusion.
+ * 
+ * @param {meshBase} _mesh - The meshBase object containing transform data.
+ * @author Justin Aul
+ */
 function generateHouse(_mesh) {
     //First build without the roof
     const houseMesh = [

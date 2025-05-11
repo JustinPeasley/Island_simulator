@@ -6,7 +6,7 @@ Features
 
     Animated Water Surface using sine waves and bump noise
 
-    Dynamic Vegetation (trees, rocks, grass) placed based on terrain height
+    Dynamic Vegetation (trees, rocks, grass, houses) placed based on terrain height
 
     Skybox Environment for immersive scenery
 
@@ -15,6 +15,10 @@ Features
     Interactive Camera with WASD-style controls
 
     Frame-Based Water Animation tied to simulation time
+
+    Culling for mesh geometries hidden beneath terrain and water surface
+
+    Automatic camera dynamically adapts to the landscapes
 
 Technology Stack
 
@@ -38,7 +42,4 @@ These are minimal dependencies and do not rely on full-scale libraries like Thre
 
 Controls
   Key	Action
-  Arrow Keys	Rotate camera
-  Space	Move forward
-  Shift	Move backward
   W/S	Raise or lower sea level
